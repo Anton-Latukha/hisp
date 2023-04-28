@@ -1,0 +1,205 @@
+cabal-version:  2.2
+name:           hisp
+version:        0.0.1
+synopsis:       Haskellized Lisp
+description:    Game of the design merge between Haskell and Lisp.
+category:       Programming language, Lisp
+homepage:       https://github.com/Anton-Latukha/hisp#readme
+bug-reports:    https://github.com/Anton-Latukha/hisp/issues
+author:         Anton-Latukha
+maintainer:     anton.latukha+hisp@gmail.com
+license:        LGPL-2.1-or-later
+license-file:   License
+build-type:     Simple
+data-dir:       data/
+extra-source-files:
+  ChangeLog.md
+  ReadMe.md
+  License
+
+source-repository head
+  type: git
+  location: https://github.com/Anton-Latukha/hisp
+
+flag optimize
+  description: Enable all optimization flags
+  manual: True
+  default: True
+
+flag profiling
+  description: Enable profiling
+  manual: True
+  default: False
+
+common shared
+  default-language: Haskell2010
+  default-extensions:
+      NoImplicitPrelude
+    , OverloadedStrings
+    , GeneralizedNewtypeDeriving
+    , DeriveGeneric
+    , DeriveDataTypeable
+    , DeriveFunctor
+    , DeriveFoldable
+    , DeriveTraversable
+    , DeriveLift
+    , FlexibleContexts
+    , FlexibleInstances
+    , ScopedTypeVariables
+    , StandaloneDeriving
+    , TypeApplications
+    , TypeSynonymInstances
+    , InstanceSigs
+    , MultiParamTypeClasses
+    , TupleSections
+    , LambdaCase
+    , BangPatterns
+    , ViewPatterns
+  build-depends:
+      base >= 4.12 && < 4.18
+    , data-fix >= 0.3.0 && < 0.4
+    , exceptions >= 0.10.0 && < 0.11
+    , filepath >= 1.4.2 && < 1.5
+    , relude >= 1.0.0 && < 1.2
+    , serialise >= 0.2.1 && < 0.3
+    , template-haskell >= 2.13 && < 2.20
+    , time >= 1.8.0 && < 1.9 || >= 1.9.3 && < 1.13
+  ghc-options:
+    -Wall
+    -Wno-incomplete-uni-patterns
+    -fprint-potential-instances
+  if flag(optimize)
+    default-extensions:
+      ApplicativeDo
+    ghc-options:
+      -O2
+      -fexpose-all-unfoldings
+      -fspecialise-aggressively
+  -- if !flag(profiling)
+  --   build-depends:
+  --       ghc-datasize
+
+library
+  import: shared
+  exposed-modules:
+    Hisp
+    Hisp.Prelude
+    Hisp.Utils
+    Hisp.Atom
+  other-modules:
+    Paths_hisp
+  autogen-modules:
+    Paths_hisp
+  hs-source-dirs:
+    src
+  build-depends:
+    , aeson >= 1.4.2 && < 1.6 || >= 2.0 && < 2.2
+    , array >= 0.4 && < 0.6
+    , base16-bytestring >= 0.1.1 && < 1.1
+    , binary >= 0.8.5 && < 0.9
+    , bytestring >= 0.10.8 && < 0.12
+    , cryptonite
+    , comonad >= 5.0.4 && < 5.1
+    , containers >= 0.5.11.0 && < 0.7
+    , deepseq >= 1.4.3 && <1.5
+    , deriving-compat >= 0.3 && < 0.7
+    , directory >= 1.3.1 && < 1.4
+    , extra >= 1.7 && < 1.8
+    , free >= 5.1 && < 5.2
+    , gitrev >= 1.1.0 && < 1.4
+    , hashable >= 1.2.5 && < 1.5
+    , hashing >= 0.1.0 && < 0.2
+    , http-client >= 0.5.14 && < 0.6 || >= 0.6.4 && < 0.8
+    , http-client-tls >= 0.3.5 && < 0.4
+    , http-types >= 0.12.2 && < 0.13
+    , lens-family >= 1.2.2 && < 2.2
+    , lens-family-core >= 1.2.2 && < 2.2
+    , lens-family-th >= 0.5.0 && < 0.6
+    , logict >= 0.6.0 && < 0.7 || >= 0.7.0.2 && < 0.8
+    , megaparsec >= 7.0 && < 9.3
+    , monad-control >= 1.0.2 && < 1.1
+    , monadlist >= 0.0.2 && < 0.1
+    , mtl >= 2.2.2 && < 2.3
+    , neat-interpolation >= 0.4 && < 0.6
+    , parser-combinators >= 1.0.1 && < 1.4
+    , pretty-show >= 1.9.5 && < 1.11
+    , prettyprinter >= 1.7.0 && < 1.8
+    , process >= 1.6.3 && < 1.7
+    , ref-tf >= 0.5 && < 0.6
+    , regex-tdfa >= 1.2.3 && < 1.4
+    , scientific >= 0.3.6 && < 0.4
+    , semialign >= 1.2 && < 1.3
+    , some >= 1.0.1 && < 1.1
+    , split >= 0.2.3 && < 0.3
+    , syb >= 0.7 && < 0.8
+    , th-lift-instances >= 0.1 && < 0.2
+    , text >= 1.2.3 && < 2.1
+    , these >= 1.0.1 && < 1.2
+    , transformers >= 0.5.5 && < 0.6
+    , transformers-base >= 0.4.5 && < 0.5
+    , unix-compat >= 0.4.3 && < 0.6
+    , unordered-containers >= 0.2.14 && < 0.3
+
+-- executable hnix
+--   import: shared
+--   hs-source-dirs:
+--     main
+--   main-is: Main.hs
+--   other-modules:
+--     Repl
+--     Paths_hnix
+--   autogen-modules:
+--     Paths_hnix
+--   build-depends:
+--       hisp
+--     , pretty-show
+--     , prettyprinter
+--   if impl(ghc < 8.10)
+--     -- GHC < 8.10 comes with haskeline < 0.8, which we don't support.
+--     -- To simplify CI, we just disable the component.
+--     buildable: False
+
+-- test-suite hnix-tests
+--   import: shared
+--   type: exitcode-stdio-1.0
+--   main-is: Main.hs
+--   other-modules:
+--     EvalTests
+--     NixLanguageTests
+--     ParserTests
+--     PrettyParseTests
+--     PrettyTests
+--     ReduceExprTests
+--     TestCommon
+--   hs-source-dirs:
+--     tests
+--   build-depends:
+--       hnix
+--     , Diff
+--     , Glob
+--     , containers
+--     , directory
+--     , hedgehog
+--     , megaparsec
+--     , neat-interpolation
+--     , pretty-show
+--     , prettyprinter
+--     , process
+--     , split
+--     , tasty
+--     , tasty-hedgehog
+--     , tasty-hunit
+--     , tasty-th
+--     , unix-compat
+
+-- benchmark hnix-benchmarks
+--   import: shared
+--   type: exitcode-stdio-1.0
+--   main-is: Main.hs
+--   other-modules:
+--     ParserBench
+--   hs-source-dirs:
+--     benchmarks
+--   build-depends:
+--     hnix
+--     , criterion
