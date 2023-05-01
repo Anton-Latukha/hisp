@@ -55,9 +55,22 @@ data Tar
   = Fresh
   | Wrap Expr
 
+-- | A funny name for a function that turns value back into readable expression.
+valueExpress :: MonadFail m => Value -> m Expr
+valueExpress =
+  undefined
+
+nf :: MonadFail m => Env Value -> Expr -> m Expr
+nf e t =
+  do
+    v <- eval e t
+    valueExpress v
+
 apply :: MonadFail m => Value -> Value -> m Value
 apply (Closure e n x) v = eval (one (n, v) <> e) x
 
+-- | Builds the environment,
+-- embodies which variables and functions are in the scope of something.
 scope :: MonadFail m => Env Expr -> m (Env Value)
 scope = traverse (eval mempty)
 
