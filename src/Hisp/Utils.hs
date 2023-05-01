@@ -18,6 +18,7 @@ module Hisp.Utils
 
   , whenTrue
   , whenFalse
+  , monoid
   , whenJust
   , isPresent
   , handlePresence
@@ -196,6 +197,13 @@ whenFalse f =
     f
     mempty
 {-# inline whenFalse #-}
+
+monoid :: (Eq a, Monoid a) => b -> (a -> b) -> a -> b
+monoid v f a =
+  bool
+    v
+    (f a)
+    (mempty == a)
 
 whenJust
   :: Monoid b
