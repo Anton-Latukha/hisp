@@ -68,5 +68,25 @@ example =
       fromList [("id", Lambda "x" $ Var "x"), ("const", Lambda "x" $ Lambda "y" $ Var "x")]
     eval e $ App (Var "const") (Var "id")
 
+yCombinator :: MonadFail m => m Value
+yCombinator =
+  do
+   e <- program $ fromList $ one y'
+   eval e $ Var "yCombinator"
+ where
+  x' =
+    Lambda "x" $
+      App
+        (Var "f")
+        (App (Var "x") (Var "x"))
+  y' =
+    ( "yCombinator"
+    , Lambda "f" $
+        App x' x'
+    )
+
 main :: IO ()
-main = print =<< example
+main =
+  do
+    print =<< example
+    print =<< yCombinator
