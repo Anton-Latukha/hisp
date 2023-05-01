@@ -58,20 +58,20 @@ data Tar
 apply :: MonadFail m => Value -> Value -> m Value
 apply (Closure e n x) v = eval (one (n, v) <> e) x
 
-program :: MonadFail m => Env Expr -> m (Env Value)
-program = traverse (eval mempty)
+scope :: MonadFail m => Env Expr -> m (Env Value)
+scope = traverse (eval mempty)
 
 example :: MonadFail m => m Value
 example =
   do
-    e <- program $
+    e <- scope $
       fromList [("id", Lambda "x" $ Var "x"), ("const", Lambda "x" $ Lambda "y" $ Var "x")]
     eval e $ App (Var "const") (Var "id")
 
 yCombinator :: MonadFail m => m Value
 yCombinator =
   do
-   e <- program $ fromList $ one y'
+   e <- scope $ fromList $ one y'
    eval e $ Var "yCombinator"
  where
   x' =
