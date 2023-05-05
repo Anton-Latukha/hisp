@@ -55,11 +55,11 @@ eval env =
 
 evalM :: MonadFail m => m (Env Value) -> Expr -> m Value
 evalM b e =
-  b >>= (`eval` e)
+  (`eval` e) =<< b
 
 type Namespace = [Name]
 
---  2023-05-04: FIXME: Find a way to remove this aglines, maybe with type abstraction.
+--  2023-05-04: FIXME: Find a way to remove this uglines, maybe with type abstraction.
 fresh :: Namespace -> Name -> Name
 fresh xs x =
   bool
