@@ -7,12 +7,7 @@ module Hisp
 where
 
 import           Hisp.Prelude
-import           Relude.Unsafe                  ( (!!) )
-import           GHC.Err                        ( errorWithoutStackTrace )
-import           Data.Fix                       ( Fix )
 import qualified Data.HashMap.Lazy             as M
-import qualified Data.Text                     as Text
-import qualified Data.Text.Read                as Text
 
 newtype Name = Name Text
  deriving (Eq, Show, Hashable, IsString, Semigroup)
