@@ -132,8 +132,11 @@ yCombinator =
         App x' x'
     )
 
+printValue :: (MonadFail m, MonadIO m) => m Value -> m ()
+printValue e = print =<< expressValue mempty =<< e
+
 main :: IO ()
 main =
   do
-    print =<< expressValue mempty =<< example
-    print =<< expressValue mempty =<< yCombinator
+    printValue example
+    printValue yCombinator
