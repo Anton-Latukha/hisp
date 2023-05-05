@@ -15,7 +15,7 @@ import qualified Data.Text                     as Text
 import qualified Data.Text.Read                as Text
 
 newtype Name = Name Text
- deriving (Eq, Show, Hashable, IsString)
+ deriving (Eq, Show, Hashable, IsString, Semigroup)
 
 data Expr
   = Var Name
@@ -28,8 +28,9 @@ data Value
   | Neutral Neutral
  deriving Show
 
-newtype Neutral
+data Neutral
   = NVar Name
+  | NApp Neutral Value
  deriving Show
 
 newtype Env a = Env (HashMap Name a)
@@ -49,62 +50,76 @@ eval env =
         pure
         $ M.lookup x $ coerce env
     App f x    ->
-      join $ liftA2
-        apply
-          (eval env f)
-          (eval env x)
+      join $
+        liftA2
+          apply
+            (eval env f)
+            (eval env x)
     Lambda n x ->
       pure $ Closure env n x
+
+evalM :: MonadFail m => m (Env Value) -> Expr -> m Value
+evalM b e =
+  b >>= (`eval` e)
 
 type Namespace = [Name]
 
 --  2023-05-04: FIXME: Find a way to remove this aglines, maybe with type abstraction.
 fresh :: Namespace -> Name -> Name
-fresh xs x
+fresh xs x =
   bool
     x
     (fresh xs (x <> "'"))
     (x `elem` xs)
 
 -- | A funny name for a function that turns value back into readable expression.
-valueExpress :: MonadFail m => Namespace -> Value -> m Expr
-valueExpress xs (Closure env x b) =
+expressValue :: MonadFail m => Namespace -> Value -> m Expr
+expressValue xs (Closure env x b) =
   do
     let
       x' = fresh xs x
     bv <- eval (one (x, Neutral $ NVar x') <> env) b
-    Lambda x' <$> valueExpress (one x' <> xs) bv
-valueExpress _ (Neutral n) = valueExpressNeutral n
+    Lambda x' <$> expressValue (one x' <> xs) bv
+expressValue xs (Neutral n) = expressValueNeutral xs n
 
-valueExpressNeutral :: MonadFail m => Neutral -> m Expr
-valueExpressNeutral (NVar x) = pure $ Var x
+expressValueNeutral :: MonadFail m => Namespace -> Neutral -> m Expr
+expressValueNeutral xs =
+  \case
+    NVar x   ->
+      pure $ Var x
+    NApp f x ->
+      App
+        <$> expressValueNeutral xs f
+        <*> expressValue xs x
 
 nf :: MonadFail m => Env Value -> Expr -> m Expr
 nf env t =
-  do
-    v <- eval env t
-    valueExpress v
+  expressValue mempty =<< eval env t
 
 apply :: MonadFail m => Value -> Value -> m Value
 apply (Closure env n x) v = eval (one (n, v) <> env) x
+apply (Neutral n) v = pure $ Neutral $ NApp n v
 
 -- | Builds the environment,
 -- embodies which variables and functions are in the scope of something.
 scope :: MonadFail m => Env Expr -> m (Env Value)
 scope = traverse (eval mempty)
 
+basisExpr :: Env Expr
+basisExpr =
+  fromList [("id", Lambda "x" $ Var "x"), ("const", Lambda "x" $ Lambda "y" $ Var "x")]
+
+basisScope :: MonadFail m => m (Env Value)
+basisScope =
+  scope basisExpr
+
 example :: MonadFail m => m Value
 example =
-  do
-    env <- scope $
-      fromList [("id", Lambda "x" $ Var "x"), ("const", Lambda "x" $ Lambda "y" $ Var "x")]
-    eval env $ App (Var "const") (Var "id")
+  evalM basisScope $ App (Var "const") (Var "id")
 
 yCombinator :: MonadFail m => m Value
 yCombinator =
-  do
-   env <- scope $ fromList $ one y'
-   eval env $ Var "yCombinator"
+  evalM (scope $ fromList (one y') <> basisExpr) $ Var "yCombinator"
  where
   x' =
     Lambda "x" $
@@ -120,5 +135,5 @@ yCombinator =
 main :: IO ()
 main =
   do
-    print =<< example
-    print =<< yCombinator
+    print =<< expressValue mempty =<< example
+    print =<< expressValue mempty =<< yCombinator
