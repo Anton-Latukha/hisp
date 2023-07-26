@@ -57,13 +57,10 @@ atomToText :: HispAtom -> Text
 atomToText = \case
   HispURI   t -> t
   HispInt   i -> show i
-  HispFloat f -> showFloat f
-   where
-    showFloat :: Float -> Text
-    showFloat x =
-      bool
-        (show x)
-        (show (truncate x :: Int))
-        $ mod' x 1 == 0
+  HispFloat f ->
+    bool
+      (show f) -- Do not touch floating point
+      (show (truncate f :: Int)) -- Turn floating point to integer
+      $ mod' f 1 == 0 -- Does number has a .point value
   HispBool  b -> bool "False" "True" b
   HispNull      -> "Null"
