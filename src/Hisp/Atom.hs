@@ -53,8 +53,8 @@ instance ToJSON HispAtom
 instance FromJSON HispAtom
 
 -- | Translate an atom into its Nix representation.
-atomText :: HispAtom -> Text
-atomText = \case
+atomToText :: HispAtom -> Text
+atomToText = \case
   (HispURI   t) -> t
   (HispInt   i) -> show i
   (HispFloat f) -> showFloat f
