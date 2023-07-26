@@ -15,11 +15,10 @@ import           Data.Aeson.Types               ( FromJSON
 --  2021-08-01: NOTE: Check the order effectiveness of HispAtom constructors.
 
 -- | Atoms are values that evaluate to themselves.
--- In other words - this is a constructors that are literals in Nix.
--- This means that
--- they appear in both the parsed AST (in the form of literals) and
+-- In other words - constructors that are literals in the language.
+-- Literals appear in both the parsed AST (in the form of literals) and
 -- the evaluated form as themselves.
--- Once HNix parsed or evaluated into atom - that is a literal
+-- Once Hisp parsed or evaluated into atom - that is a literal
 -- further after, for any further evaluation it is in all cases stays
 -- constantly itself.
 -- "atom", Ancient Greek \( atomos \) - "indivisible" particle,
@@ -27,14 +26,13 @@ import           Data.Aeson.Types               ( FromJSON
 data HispAtom
   -- | An URI like @https://example.com@.
   = HispURI Text
-  -- | An integer. The c nix implementation currently only supports
-  -- integers that fit in the range of 'Int64'.
+  -- | An integer (@Int64@).
   | HispInt Integer
-  -- | A floating point number
+  -- | A floating point number.
   | HispFloat Float
-  -- | Booleans. @false@ or @true@.
+  -- | Booleans. @False@ or @True@.
   | HispBool Bool
-  -- | Null values. There's only one of this variant: @null@.
+  -- | Null value. For development purpose, should be radically removed in the stable versions of language.
   | HispNull
   deriving
     ( Eq
@@ -66,5 +64,5 @@ atomText (HispFloat f) = showFloat f
       (show x)
       (show (truncate x :: Int))
       (x `mod'` 1 == 0)
-atomText (HispBool  b) = if b then "true" else "false"
-atomText HispNull      = "null"
+atomText (HispBool  b) = bool "False" "True" b
+atomText HispNull      = "Null"
