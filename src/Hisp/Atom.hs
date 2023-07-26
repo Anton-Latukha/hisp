@@ -54,15 +54,16 @@ instance FromJSON HispAtom
 
 -- | Translate an atom into its Nix representation.
 atomText :: HispAtom -> Text
-atomText (HispURI   t) = t
-atomText (HispInt   i) = show i
-atomText (HispFloat f) = showFloat f
- where
-  showFloat :: Float -> Text
-  showFloat x =
-    bool
-      (show x)
-      (show (truncate x :: Int))
-      (x `mod'` 1 == 0)
-atomText (HispBool  b) = bool "False" "True" b
-atomText HispNull      = "Null"
+atomText = \case
+  (HispURI   t) -> t
+  (HispInt   i) -> show i
+  (HispFloat f) -> showFloat f
+    where
+      showFloat :: Float -> Text
+      showFloat x =
+        bool
+          (show x)
+          (show (truncate x :: Int))
+          (x `mod'` 1 == 0)
+  (HispBool  b) -> bool "False" "True" b
+  HispNull      -> "Null"
