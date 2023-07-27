@@ -7,7 +7,6 @@ module Hisp
 where
 
 import           Hisp.Prelude
-import qualified Data.HashMap.Lazy             as M
 
 newtype Name = Name Text
  deriving (Eq, Show, Hashable, IsString, Semigroup)
@@ -24,12 +23,20 @@ data Value
  deriving Show
 
 data Neutral
-  = NVar Name
-  | NApp Neutral Value
+  = NeutralVar Name
+  | NeutralApp Neutral Value
  deriving Show
 
 newtype Env a = Env (HashMap Name a)
- deriving (Show, IsList, Semigroup, Monoid, Functor, Foldable, Traversable)
+ deriving
+   ( Show
+   , IsList
+   , Semigroup
+   , Monoid
+   , Functor
+   , Foldable
+   , Traversable
+   )
 
 instance One (Env a) where
   type OneItem (Env a) = (Name, a)
@@ -39,61 +46,72 @@ instance One (Env a) where
 eval :: MonadFail m => Env Value -> Expr -> m Value
 eval env =
   \case
-    Var x     ->
+    Var name         ->
       maybe
         (fail "bad")
         pure
-        $ M.lookup x $ coerce env
-    App f x    ->
+        (lookupHM (coerce env) name)
+    App binds expr   ->
       join $
         liftA2
           apply
-            (eval env f)
-            (eval env x)
-    Lambda n x ->
-      pure $ Closure env n x
+          (eval env binds)
+          (eval env expr)
+    Lambda name expr ->
+      pure $ Closure env name expr
 
 evalM :: MonadFail m => m (Env Value) -> Expr -> m Value
 evalM b e =
   (`eval` e) =<< b
 
-type Namespace = [Name]
+-- | 2023-07-27: FIXME: Migrate from HashMap to HashSet
+type Namespace = HashMap Name ()
 
 --  2023-05-04: FIXME: Find a way to remove this uglines, maybe with type abstraction.
-fresh :: Namespace -> Name -> Name
-fresh xs x =
-  bool
-    x
-    (fresh xs (x <> "'"))
-    (x `elem` xs)
+createUnique :: Namespace -> Name -> Name
+createUnique namespace name =
+  maybe
+    name
+    (const $ createUnique namespace (name <> "'"))
+    (lookupHM namespace name)
 
 -- | A funny name for a function that turns value back into readable expression.
 expressValue :: MonadFail m => Namespace -> Value -> m Expr
-expressValue xs (Closure env x b) =
-  do
-    let
-      x' = fresh xs x
-    bv <- eval (one (x, Neutral $ NVar x') <> env) b
-    Lambda x' <$> expressValue (one x' <> xs) bv
-expressValue xs (Neutral n) = expressValueNeutral xs n
+expressValue namespace (Closure env name expr) =
+  (<$>)
+    (Lambda uniqueName)
+    (expressValue
+      (cons
+        (uniqueName, mempty)
+        namespace
+      )
+      =<<
+        eval
+          (cons (name, Neutral $ NeutralVar uniqueName) env)
+          expr
+    )
+ where
+  uniqueName = createUnique namespace name
+expressValue namespace (Neutral n) = expressValueNeutral namespace n
 
 expressValueNeutral :: MonadFail m => Namespace -> Neutral -> m Expr
-expressValueNeutral xs =
+expressValueNeutral namespace =
   \case
-    NVar x   ->
+    NeutralVar x   ->
       pure $ Var x
-    NApp f x ->
-      App
-        <$> expressValueNeutral xs f
-        <*> expressValue xs x
+    NeutralApp f x ->
+      liftA2
+        App
+        (expressValueNeutral namespace f)
+        (expressValue        namespace x)
 
-nf :: MonadFail m => Env Value -> Expr -> m Expr
-nf env t =
+normalForm :: MonadFail m => Env Value -> Expr -> m Expr
+normalForm env t =
   expressValue mempty =<< eval env t
 
 apply :: MonadFail m => Value -> Value -> m Value
-apply (Closure env n x) v = eval (one (n, v) <> env) x
-apply (Neutral n) v = pure $ Neutral $ NApp n v
+apply (Closure env name expr) val = eval (cons (name, val) env) expr
+apply (Neutral neutral      ) val = pure $ Neutral $ NeutralApp neutral val
 
 -- | Builds the environment,
 -- embodies which variables and functions are in the scope of something.
@@ -114,14 +132,14 @@ example =
 
 yCombinator :: MonadFail m => m Value
 yCombinator =
-  evalM (scope $ fromList (one y') <> basisExpr) $ Var "yCombinator"
+  evalM (scope $ fromList (one yCombinator) <> basisExpr) $ Var "yCombinator"
  where
   x' =
     Lambda "x" $
       App
         (Var "f")
         (App (Var "x") (Var "x"))
-  y' =
+  yCombinator =
     ( "yCombinator"
     , Lambda "f" $
         App x' x'
