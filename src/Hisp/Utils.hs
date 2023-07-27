@@ -51,6 +51,10 @@ module Hisp.Utils
 
   , KeyMap
 
+  , cons
+  , snoc
+  , lookupHM
+
   , trace
   , traceM
   , module X
@@ -86,6 +90,7 @@ import           Lens.Family2.Stock             ( _1
                                                 )
 import qualified System.FilePath              as FilePath
 import Control.Monad.List (foldM)
+import qualified Data.HashMap.Lazy             as HM
 
 #if ENABLE_TRACING
 import qualified Relude.Debug                 as X
@@ -381,3 +386,12 @@ askLocal = asks $ view hasLens
 
 -- | > Hashmap Text -- type synonym
 type KeyMap = HashMap Text
+
+cons :: (Semigroup a, One a) => OneItem a -> a -> a
+cons = (<>) . one
+
+snoc :: (Semigroup a, One a) => a -> OneItem a -> a
+snoc xs = (<>) xs . one
+
+lookupHM :: Hashable k => HashMap k v -> k -> Maybe v
+lookupHM = flip HM.lookup
