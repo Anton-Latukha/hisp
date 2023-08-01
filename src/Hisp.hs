@@ -79,19 +79,19 @@ createUnique namespace name =
 expressValue :: MonadFail m => Namespace -> Value -> m Expr
 expressValue namespace (Closure env name expr) =
   (<$>)
-    (Lambda uniqueName)
+    (Lambda l_uniqueName)
     (expressValue
       (cons
-        (uniqueName, mempty)
+        (l_uniqueName, mempty)
         namespace
       )
       =<<
         eval
-          (cons (name, Neutral $ NeutralVar uniqueName) env)
+          (cons (name, Neutral $ NeutralVar l_uniqueName) env)
           expr
     )
  where
-  uniqueName = createUnique namespace name
+  l_uniqueName = createUnique namespace name
 expressValue namespace (Neutral n) = expressValueNeutral namespace n
 
 expressValueNeutral :: MonadFail m => Namespace -> Neutral -> m Expr
@@ -120,7 +120,10 @@ scope = traverse (eval mempty)
 
 basisExpr :: Env Expr
 basisExpr =
-  fromList [("id", Lambda "x" $ Var "x"), ("const", Lambda "x" $ Lambda "y" $ Var "x")]
+  fromList
+    [ ("id"   , Lambda "x" $ Var "x")
+    , ("const", Lambda "x" $ Lambda "y" $ Var "x")
+    ]
 
 basisScope :: MonadFail m => m (Env Value)
 basisScope =
@@ -132,18 +135,19 @@ example =
 
 yCombinator :: MonadFail m => m Value
 yCombinator =
-  evalM (scope $ fromList (one yCombinator) <> basisExpr) $ Var "yCombinator"
+  evalM (scope $ one l_yCombinator <> basisExpr) $ Var "yCombinator"
  where
-  x' =
-    Lambda "x" $
-      App
-        (Var "f")
-        (App (Var "x") (Var "x"))
-  yCombinator =
+  l_yCombinator =
     ( "yCombinator"
     , Lambda "f" $
-        App x' x'
+        App l_x' l_x'
     )
+   where
+    l_x' =
+      Lambda "x" $
+        App
+          (Var "f")
+          (App (Var "x") (Var "x"))
 
 printValue :: (MonadFail m, MonadIO m) => m Value -> m ()
 printValue e = print =<< expressValue mempty =<< e
