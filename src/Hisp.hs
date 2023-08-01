@@ -38,6 +38,9 @@ newtype Env a = Env (HashMap Name a)
    , Traversable
    )
 
+-- | 2023-07-27: FIXME: Migrate from HashMap to HashSet
+type Namespace = Env ()
+
 instance One (Env a) where
   type OneItem (Env a) = (Name, a)
   one :: OneItem (Env a) -> Env a
@@ -64,16 +67,13 @@ evalM :: MonadFail m => m (Env Value) -> Expr -> m Value
 evalM b e =
   (`eval` e) =<< b
 
--- | 2023-07-27: FIXME: Migrate from HashMap to HashSet
-type Namespace = HashMap Name ()
-
 --  2023-05-04: FIXME: Find a way to remove this uglines, maybe with type abstraction.
 createUnique :: Namespace -> Name -> Name
 createUnique namespace name =
   maybe
     name
     (const $ createUnique namespace (name <> "'"))
-    (lookupHM namespace name)
+    (lookupHM @Name @() (coerce namespace) name)
 
 -- | A funny name for a function that turns value back into readable expression.
 expressValue :: MonadFail m => Namespace -> Value -> m Expr
