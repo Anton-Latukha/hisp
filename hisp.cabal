@@ -61,7 +61,7 @@ common shared
     -Wall
     -Wno-incomplete-uni-patterns
     -fprint-potential-instances
-    -ddump-deriv
+    -- -ddump-deriv
   if flag(optimize)
     default-extensions:
       ApplicativeDo
