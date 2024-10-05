@@ -32,42 +32,36 @@ flag profiling
   default: False
 
 common shared
-  default-language: Haskell2010
+  default-language: GHC2021
   default-extensions:
       NoImplicitPrelude
-    , OverloadedStrings
-    , GeneralizedNewtypeDeriving
-    , DeriveGeneric
-    , DeriveDataTypeable
-    , DeriveFunctor
-    , DeriveFoldable
-    , DeriveTraversable
-    , DeriveLift
-    , FlexibleContexts
-    , FlexibleInstances
-    , ScopedTypeVariables
-    , StandaloneDeriving
-    , TypeApplications
-    , TypeSynonymInstances
-    , InstanceSigs
-    , MultiParamTypeClasses
-    , TupleSections
     , LambdaCase
-    , BangPatterns
     , ViewPatterns
+    , OverloadedStrings
+    , OverloadedLists
   build-depends:
-      base >= 4.12 && < 4.18
+      base >= 4.12 && < 4.21
     , data-fix >= 0.3.0 && < 0.4
     , exceptions >= 0.10.0 && < 0.11
     , filepath >= 1.4.2 && < 1.5
-    , relude >= 1.0.0 && < 1.2
+    , relude >= 1.0.0 && < 1.3
     , serialise >= 0.2.1 && < 0.3
-    , template-haskell >= 2.13 && < 2.20
+    , template-haskell >= 2.13 && < 2.22
     , time >= 1.8.0 && < 1.9 || >= 1.9.3 && < 1.13
+    , tasty
+    , tasty-hunit
+    , geniplate-mirror
+    , validity
+    , genvalidity
+    , QuickCheck
+    , Cabal-syntax
+    , genvalidity-hspec
+    , yaya
   ghc-options:
     -Wall
     -Wno-incomplete-uni-patterns
     -fprint-potential-instances
+    -ddump-deriv
   if flag(optimize)
     default-extensions:
       ApplicativeDo
@@ -115,11 +109,11 @@ library
     , lens-family >= 1.2.2 && < 2.2
     , lens-family-core >= 1.2.2 && < 2.2
     , lens-family-th >= 0.5.0 && < 0.6
-    , logict >= 0.6.0 && < 0.7 || >= 0.7.0.2 && < 0.8
-    , megaparsec >= 7.0 && < 9.3
+    , logict >= 0.6.0 && < 0.7 || >= 0.7.0.2 && < 0.10
+    , attoparsec
     , monad-control >= 1.0.2 && < 1.1
     , monadlist >= 0.0.2 && < 0.1
-    , mtl >= 2.2.2 && < 2.3
+    , mtl >= 2.2.2 && < 2.5
     , neat-interpolation >= 0.4 && < 0.6
     , parser-combinators >= 1.0.1 && < 1.4
     , pretty-show >= 1.9.5 && < 1.11
@@ -128,30 +122,30 @@ library
     , ref-tf >= 0.5 && < 0.6
     , regex-tdfa >= 1.2.3 && < 1.4
     , scientific >= 0.3.6 && < 0.4
-    , semialign >= 1.2 && < 1.3
+    , semialign >= 1.2 && < 1.4
     , some >= 1.0.1 && < 1.1
     , split >= 0.2.3 && < 0.3
     , syb >= 0.7 && < 0.8
     , th-lift-instances >= 0.1 && < 0.2
     , text >= 1.2.3 && < 2.1
-    , these >= 1.0.1 && < 1.2
-    , transformers >= 0.5.5 && < 0.6
-    , transformers-base >= 0.4.5 && < 0.5
-    , unix-compat >= 0.4.3 && < 0.6
+    -- , these >= 1.0.1 && < 1.2
+    , transformers >= 0.5.5 && < 0.8
+    , transformers-base >= 0.4.5 && < 0.6
+    , unix-compat >= 0.4.3 && < 0.8
     , unordered-containers >= 0.2.14 && < 0.3
 
--- executable hnix
---   import: shared
---   hs-source-dirs:
---     main
---   main-is: Main.hs
+executable hisp
+  import: shared
+  hs-source-dirs:
+    app
+  main-is: Main.hs
 --   other-modules:
 --     Repl
 --     Paths_hnix
 --   autogen-modules:
 --     Paths_hnix
---   build-depends:
---       hisp
+  build-depends:
+       hisp
 --     , pretty-show
 --     , prettyprinter
 --   if impl(ghc < 8.10)
@@ -159,10 +153,10 @@ library
 --     -- To simplify CI, we just disable the component.
 --     buildable: False
 
--- test-suite hnix-tests
---   import: shared
---   type: exitcode-stdio-1.0
---   main-is: Main.hs
+test-suite hnix-tests
+  import: shared
+  type: exitcode-stdio-1.0
+  main-is: Tests.hs
 --   other-modules:
 --     EvalTests
 --     NixLanguageTests
@@ -171,9 +165,14 @@ library
 --     PrettyTests
 --     ReduceExprTests
 --     TestCommon
---   hs-source-dirs:
---     tests
---   build-depends:
+  hs-source-dirs:
+    Tests
+  build-depends:
+      hisp
+    , tasty
+    , tasty-hunit
+    , tasty-hedgehog
+    , tasty-quickcheck
 --       hnix
 --     , Diff
 --     , Glob
@@ -186,9 +185,6 @@ library
 --     , prettyprinter
 --     , process
 --     , split
---     , tasty
---     , tasty-hedgehog
---     , tasty-hunit
 --     , tasty-th
 --     , unix-compat
 
