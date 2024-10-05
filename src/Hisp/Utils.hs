@@ -1,5 +1,4 @@
 {-# language CPP #-}
-{-# language GeneralizedNewtypeDeriving #-}
 
 -- | This is a module of custom "Prelude" code.
 -- It is for import for projects other then @Hisp@.
@@ -54,6 +53,7 @@ module Hisp.Utils
   , cons
   , snoc
   , lookupHM
+  , crc
 
   , trace
   , traceM
@@ -89,7 +89,7 @@ import           Lens.Family2.Stock             ( _1
                                                 , _2
                                                 )
 import qualified System.FilePath              as FilePath
-import Control.Monad.List (foldM)
+import Control.Monad (foldM)
 import qualified Data.HashMap.Lazy             as HM
 
 #if ENABLE_TRACING
@@ -263,10 +263,10 @@ newtype Path = Path FilePath
     )
 
 instance ToText Path where
-  toText = toText @String . coerce
+  toText = toText @String . crc
 
 instance IsString Path where
-  fromString = coerce
+  fromString = crc
 
 -- ** Path functions
 
@@ -274,56 +274,56 @@ instance IsString Path where
 
 -- | 'Path's 'FilePath.isAbsolute'.
 isAbsolute :: Path -> Bool
-isAbsolute = coerce FilePath.isAbsolute
+isAbsolute = crc FilePath.isAbsolute
 
 -- | 'Path's 'FilePath.(</>)'.
 (</>) :: Path -> Path -> Path
-(</>) = coerce (FilePath.</>)
+(</>) = crc (FilePath.</>)
 infixr 5 </>
 
 -- | 'Path's 'FilePath.joinPath'.
 joinPath :: [Path] -> Path
-joinPath = coerce FilePath.joinPath
+joinPath = crc FilePath.joinPath
 
 -- | 'Path's 'FilePath.splitDirectories'.
 splitDirectories :: Path -> [Path]
-splitDirectories = coerce FilePath.splitDirectories
+splitDirectories = crc FilePath.splitDirectories
 
 -- | 'Path's 'FilePath.takeDirectory'.
 takeDirectory :: Path -> Path
-takeDirectory = coerce FilePath.takeDirectory
+takeDirectory = crc FilePath.takeDirectory
 
 -- | 'Path's 'FilePath.takeFileName'.
 takeFileName :: Path -> Path
-takeFileName = coerce FilePath.takeFileName
+takeFileName = crc FilePath.takeFileName
 
 -- | 'Path's 'FilePath.takeBaseName'.
 takeBaseName :: Path -> String
-takeBaseName = coerce FilePath.takeBaseName
+takeBaseName = crc FilePath.takeBaseName
 
 -- | 'Path's 'FilePath.takeExtension'.
 takeExtension :: Path -> String
-takeExtension = coerce FilePath.takeExtensions
+takeExtension = crc FilePath.takeExtensions
 
 -- | 'Path's 'FilePath.takeExtensions'.
 takeExtensions :: Path -> String
-takeExtensions = coerce FilePath.takeExtensions
+takeExtensions = crc FilePath.takeExtensions
 
 -- | 'Path's 'FilePath.addExtensions'.
 addExtension :: Path -> String -> Path
-addExtension = coerce FilePath.addExtension
+addExtension = crc FilePath.addExtension
 
 -- | 'Path's 'FilePath.dropExtensions'.
 dropExtensions :: Path -> Path
-dropExtensions = coerce FilePath.dropExtensions
+dropExtensions = crc FilePath.dropExtensions
 
 -- | 'Path's 'FilePath.replaceExtension'.
 replaceExtension :: Path -> String -> Path
-replaceExtension = coerce FilePath.replaceExtension
+replaceExtension = crc FilePath.replaceExtension
 
 -- | 'Path's 'FilePath.readFile'.
 readFile :: MonadIO m => Path -> m Text
-readFile = readFileText . coerce
+readFile = readFileText . crc
 
 
 -- * Recursion scheme
@@ -395,3 +395,18 @@ snoc xs = (<>) xs . one
 
 lookupHM :: Hashable k => HashMap k v -> k -> Maybe v
 lookupHM = flip HM.lookup
+
+while :: (a -> Bool) -> (a -> a) -> a -> a
+while p f a =
+  bool
+    a
+    (while p f (f a))
+    (p a)
+
+-- | Purely to fix type application code, and make the target type application first (imho the most useful case).
+-- @
+--    coerce \@_ \@TypeB
+--    crc \@TypeB
+-- @
+crc :: forall b a . (Coercible a b) => a -> b
+crc = coerce @a @b
