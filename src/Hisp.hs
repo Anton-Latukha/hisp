@@ -1,20 +1,17 @@
 {-# language PatternSynonyms #-}
 {-# language DeriveAnyClass #-}
-{-# language UndecidableInstances #-}
--- {-# language StandaloneDeriving #-}
-{-# language TemplateHaskell #-}
 
 module Hisp where
 
 import           Hisp.Prelude hiding (LT)
+import Relude.Extra.Enum (next)
 import qualified Text.Show
-import           Data.Attoparsec.Text
+import Data.Attoparsec.Text
+    ( decimal, parseTest, char, parseOnly, string, Parser )
 import           Test.QuickCheck.Gen
 import           Data.GenValidity
-import           Yaya.Fold
+import Yaya.Fold ( Steppable(..), Projectable(..), Mu(..) )
 import           Data.Functor.Classes
-import Data.Eq.Deriving (deriveEq1)      -- these two are from the
-import Text.Show.Deriving (deriveShow1)  -- deriving-compat package
 
 -- ** Lambda calculi
 
@@ -24,38 +21,61 @@ import Text.Show.Deriving (deriveShow1)  -- deriving-compat package
 -- Index < number of external lambda binds => index == binded lambda value
 -- Index >= number of external lambda binds => index == free variable
 newtype BJIndx = BJIndx Int
- deriving (Eq, Enum, Num, Show, Generic, Validity, GenValid)
+ deriving (Eq, Enum, Num, Bounded, Show, Generic, Validity, GenValid)
 
 newtype LTFAppFunc a = LTFAppFunc (LTF a)
- deriving (Eq, Show, Generic, Functor, Traversable, Foldable, Validity, GenValid)
--- instance (Eq1 LTFAppFunc) where
---   liftEq (feq :: a -> b -> Bool) ltf1 ltf2 = liftEq feq (crc @(LTF a) ltf1) (crc @(LTF b) ltf2) -- 2024-09-01: NOTE: These instances are just to help at the time GHC version to guide GHC deriving through newtype boundaries
+ deriving (Eq, Eq1, Show, Generic, Functor, Traversable, Foldable, Validity, GenValid)
 
 newtype LTFAppParam a = LTFAppParam (LTF a)
- deriving (Eq, Show, Generic, Functor, Traversable, Foldable, Validity, GenValid)
--- instance (Eq1 LTFAppParam) where
---   liftEq (feq :: a -> b -> Bool) ltf1 ltf2 = liftEq feq (crc @(LTF a) ltf1) (crc @(LTF b) ltf2) -- 2024-09-01: NOTE: These instances are just to help at the time GHC version to guide GHC deriving through newtype boundaries
+ deriving (Eq, Eq1, Show, Generic, Functor, Traversable, Foldable, Validity, GenValid)
 
 newtype LTFLamBody a = LTFLamBody (LTF a)
- deriving (Eq, Show, Generic, Functor, Traversable, Foldable, Validity, GenValid)
--- instance (Eq1 LTFLamBody) where
---   liftEq (feq :: a -> b -> Bool) ltf1 ltf2 = liftEq feq (crc @(LTF a) ltf1) (crc @(LTF b) ltf2) -- 2024-09-01: NOTE: These instances are just to help at the time GHC version to guide GHC deriving through newtype boundaries
+ deriving (Eq, Eq1, Show, Generic, Functor, Traversable, Foldable, Validity, GenValid)
 
 data LTF a
-  = LTFBJIndx BJIndx
-  | LTFApp (LTFAppFunc a) (LTFAppParam a)
-  | LTFLam (LTFLamBody a)
+  = LTFBJIndx !BJIndx
+  | LTFApp    !(LTFAppFunc a) !(LTFAppParam a)
+  | LTFLam    !(LTFLamBody a)
  deriving (Eq, Show, Generic, Functor, Traversable, Foldable, Validity, GenValid, Projectable (->) LT, Steppable (->) LT)
 
--- instance (Eq1 LTF) where
---   liftEq feq la lb =
---     caseLT (crc @Int la ==) (liftEq la) (liftEq la) lb -- 2024-09-01: NOTE: This deriving instance should be made (finished) for LT, and GHC whould derive Eq1
+instance Eq1 LTF where
+  liftEq :: (a -> b -> Bool) -> LTF a -> LTF b -> Bool
+  liftEq = go  -- Making shure GHC detects that there is no point to go through typeclass dictionary searches, all other instances derive from here.
+   where
+    go eq (LTFLam    b1   ) (LTFLam    b2   ) = crc go eq b1 b2
+    go eq (LTFApp    f1 p1) (LTFApp    f2 p2) = crc go eq f1 f2 && crc go eq p1 p2
+    go _  (LTFBJIndx idx1 ) (LTFBJIndx idx2 ) = idx1 == idx2
+    go _ _ _ = False
 
 newtype LT = LT (Mu LTF)
- deriving (Generic)
+ deriving (Eq, Generic)
 
-deriveEq1 ''LT
-deriveShow1 ''LT
+-- *** Isomorphism of lambda term to human readable representation
+
+-- | Abstraction for representation of human readable view of the main lambda term datatype
+newtype LTBJHumanReadable = LTBJHumanReadable LT
+instance Show LTBJHumanReadable where
+  show :: LTBJHumanReadable -> String
+  show = l_showHR . crc
+   where
+    -- | There is a newtype boundary between main lambda term data type and human readable, code prefers to preserve the general GHC derived @Show@ instances for the general case (showing term/expression internals) for the lambda term and its components, which is why this coersion enforsment is needed.
+    l_showHR :: LT -> String
+    l_showHR =
+      caseLT
+        show
+        showApp
+        showLam
+     where
+      showApp :: LT -> LT -> String
+      showApp f a = "(" <> l_showHR f <> ") " <> l_showHR a
+      showLam :: LT -> String
+      showLam b = "\\ " <> l_showHR b
+
+turnReadable :: LT -> Text
+turnReadable = show . LTBJHumanReadable
+
+instance Show LT where
+  show (crc @LTBJHumanReadable -> a) = show a
 
 -- *** Main data type
 
@@ -69,6 +89,9 @@ instance Validity LT where
     check
       ((==) (fromRight mk0 $ turnReadableThenParseBack lt) lt)
       ("Noop" <> show lt <> ".")
+  
+-- genLTValidity :: Gen Validation
+-- genLTValidity = fmap validate (genValid @LT)
 
 -- *** Patterns
 
@@ -111,30 +134,6 @@ caseLT cf ca cl =
   PatLTBJIndx i -> cf   i
   PatLTApp  f a -> ca f a
   PatLTLam    b -> cl   b
-
--- *** Isomorphism of lambda term to human readable representation
-
--- | Abstraction for representation of human readable view of the main lambda term datatype
-newtype LTBJHumanReadable = LTBJHumanReadable LT
-instance Show LTBJHumanReadable where
-  show :: LTBJHumanReadable -> String
-  show = l_showHR . crc
-   where
-    -- | There is a newtype boundary between main lambda term data type and human readable, code prefers to preserve the general GHC derived @Show@ instances for the general case (showing term/expression internals) for the lambda term and its components, which is why this coersion enforsment is needed.
-    l_showHR :: LT -> String
-    l_showHR =
-      caseLT
-        show
-        showApp
-        showLam
-     where
-      showApp :: LT -> LT -> String
-      showApp f a = "(" <> l_showHR f <> ") " <> l_showHR a
-      showLam :: LT -> String
-      showLam b = "\\ " <> l_showHR b
-
-turnReadable :: LT -> Text
-turnReadable = show . LTBJHumanReadable
 
 -- *** Parser
 
@@ -189,9 +188,6 @@ turnReadableThenParseBack = parseOnly parserLT . (<> "\\n") . turnReadable
 -- testRoundTripLTShowAndBack :: Gen (Either String LT)
 -- testRoundTripLTShowAndBack = fmap turnReadableThenParseBack genValid
 
--- genLTValidity :: Gen Validation
--- genLTValidity = fmap validate (genValid @LT)
-
 -- fun1 :: IO ()
 -- fun1 = print =<< generate genLTValidity
 
@@ -222,4 +218,4 @@ normalize = crc .
       caseLT
         (bool v . PatLTBJIndx <*> (crc bji /=))
         (on PatLTApp (substitute v bji))
-        (substitute v $! succ bji) -- Going inside internal lambda term - increase Bruijn Index code searches for.
+        (substitute v $! next bji) -- Going inside internal lambda term - increase Bruijn Index code searches for.
