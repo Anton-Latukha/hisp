@@ -133,6 +133,7 @@ library
     , transformers-base
     , unix-compat
     , unordered-containers
+    , yaya-hedgehog
 
 executable hisp
   import: shared
