@@ -4,14 +4,16 @@
 module Hisp where
 
 import           Hisp.Prelude hiding (LT)
-import Relude.Extra.Enum (next)
+import Relude.Extra.Enum (prev, next)
 import qualified Text.Show
 import Data.Attoparsec.Text
     ( decimal, parseTest, char, parseOnly, string, Parser )
-import           Test.QuickCheck.Gen
-import           Data.GenValidity
-import Yaya.Fold ( Steppable(..), Projectable(..), Mu(..) )
-import           Data.Functor.Classes
+import Test.QuickCheck.Gen ()
+import           Test.QuickCheck
+import Yaya.QuickCheck.Fold ()
+import Data.GenValidity ( Validation, Validity(..), GenValid, check )
+import Yaya.Fold ( Steppable(..), Projectable(..), Mu(..), lambek, Recursive(..), Algebra, Coalgebra )
+import Data.Functor.Classes ( Eq1(..) )
 
 -- ** Lambda calculi
 
@@ -21,22 +23,34 @@ import           Data.Functor.Classes
 -- Index < number of external lambda binds => index == binded lambda value
 -- Index >= number of external lambda binds => index == free variable
 newtype BJIndx = BJIndx Int
- deriving (Eq, Enum, Num, Bounded, Show, Generic, Validity, GenValid)
+ deriving (Eq, Enum, Num, Bounded, Show, Generic, Arbitrary, Validity, GenValid)
 
 newtype LTFAppFunc a = LTFAppFunc (LTF a)
- deriving (Eq, Eq1, Show, Generic, Functor, Traversable, Foldable, Validity, GenValid)
+ deriving (Eq, Eq1, Show, Generic, Functor, Traversable, Foldable, Arbitrary, Validity, GenValid)
 
 newtype LTFAppParam a = LTFAppParam (LTF a)
- deriving (Eq, Eq1, Show, Generic, Functor, Traversable, Foldable, Validity, GenValid)
+ deriving (Eq, Eq1, Show, Generic, Functor, Traversable, Foldable, Arbitrary, Validity, GenValid)
 
 newtype LTFLamBody a = LTFLamBody (LTF a)
- deriving (Eq, Eq1, Show, Generic, Functor, Traversable, Foldable, Validity, GenValid)
+ deriving (Eq, Eq1, Show, Generic, Functor, Traversable, Foldable, Arbitrary, Validity, GenValid)
 
 data LTF a
   = LTFBJIndx !BJIndx
   | LTFApp    !(LTFAppFunc a) !(LTFAppParam a)
   | LTFLam    !(LTFLamBody a)
- deriving (Eq, Show, Generic, Functor, Traversable, Foldable, Validity, GenValid, Projectable (->) LT, Steppable (->) LT)
+ deriving (Eq, Show, Generic, Functor, Traversable, Foldable, Arbitrary, Validity, GenValid)
+
+instance Recursive (->) LT LTF where
+  cata :: Algebra (->) LTF a -> LT -> a
+  cata φ (LT (Mu f)) = f φ
+
+instance Projectable (->) LT LTF where
+  project :: Coalgebra (->) LTF LT
+  project = lambek
+
+instance Steppable (->) LT LTF where
+  embed :: Algebra (->) LTF LT
+  embed m = LT $ Mu $ \ f -> f $ fmap (cata f) m
 
 instance Eq1 LTF where
   liftEq :: (a -> b -> Bool) -> LTF a -> LTF b -> Bool
@@ -48,7 +62,7 @@ instance Eq1 LTF where
     go _ _ _ = False
 
 newtype LT = LT (Mu LTF)
- deriving (Eq, Generic)
+ deriving (Eq, Generic, Arbitrary)
 
 -- *** Isomorphism of lambda term to human readable representation
 
@@ -89,7 +103,32 @@ instance Validity LT where
     check
       ((==) (fromRight mk0 $ turnReadableThenParseBack lt) lt)
       ("Noop" <> show lt <> ".")
+
+-- -- instance GenValid Mu where
+-- --   genValid = 
+
+-- -- Implementing the GenValid instance for LT
+-- instance GenValid LT where
+--   genValid :: Gen LT
+--   genValid = fmap LT genValid
+
+--   shrinkValid :: LT -> [LT]
+--   shrinkValid (LT muLTF) = LT <$> shrinkValid muLTF
   
+
+-- -- GenValid instance for Mu with a Functor f that is also GenValid
+-- instance (GenValid (f (Mu f)), Functor f) => GenValid (Mu f) where
+--   genValid :: Gen (Mu f)
+--   genValid = sized $ \n -> genMu n
+
+--   shrinkValid :: Mu f -> [Mu f]
+--   shrinkValid (Mu fmu) = Mu <$> shrinkValid fmu
+
+-- -- Helper function to generate Mu with limited recursion depth
+-- genMu :: GenValid (f (Mu f)) => Int -> Gen (Mu f)
+-- genMu 0 = pure undefined  -- Base case to prevent infinite recursion
+-- genMu n = Mu <$> resize (prev n) genValid
+
 -- genLTValidity :: Gen Validation
 -- genLTValidity = fmap validate (genValid @LT)
 

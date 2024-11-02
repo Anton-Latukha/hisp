@@ -134,6 +134,7 @@ library
     , unix-compat
     , unordered-containers
     , yaya-hedgehog
+    , yaya-quickcheck
 
 executable hisp
   import: shared
