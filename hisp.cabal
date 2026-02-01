@@ -50,7 +50,7 @@ common shared
     , time
     , tasty
     , tasty-hunit
-    , geniplate-mirror
+    -- , geniplate-mirror
     , validity
     , genvalidity
     , QuickCheck
