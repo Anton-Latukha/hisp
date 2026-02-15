@@ -4,7 +4,7 @@
 module Hisp where
 
 import           Hisp.Prelude hiding (LT)
-import Relude.Extra.Enum (prev, next)
+import Relude.Extra.Enum (next)
 import qualified Text.Show
 import Data.Attoparsec.Text
     ( decimal, parseTest, char, parseOnly, string, Parser )
@@ -26,13 +26,13 @@ newtype BJIndx = BJIndx Int
  deriving (Eq, Enum, Num, Bounded, Show, Generic, Arbitrary, Validity, GenValid)
 
 newtype LTFAppFunc a = LTFAppFunc (LTF a)
- deriving (Eq, Eq1, Show, Generic, Functor, Traversable, Foldable, Arbitrary, Validity, GenValid)
+ deriving (Eq, Show, Generic, Functor, Traversable, Foldable, Arbitrary, Validity, GenValid)
 
 newtype LTFAppParam a = LTFAppParam (LTF a)
- deriving (Eq, Eq1, Show, Generic, Functor, Traversable, Foldable, Arbitrary, Validity, GenValid)
+ deriving (Eq, Show, Generic, Functor, Traversable, Foldable, Arbitrary, Validity, GenValid)
 
 newtype LTFLamBody a = LTFLamBody (LTF a)
- deriving (Eq, Eq1, Show, Generic, Functor, Traversable, Foldable, Arbitrary, Validity, GenValid)
+ deriving (Eq, Show, Generic, Functor, Traversable, Foldable, Arbitrary, Validity, GenValid)
 
 data LTF a
   = LTFBJIndx !BJIndx
